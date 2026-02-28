@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "changelog": "Initial release — CoreGPT v2, web UI, streaming chat, web search.",
+  "models": {
+    "coregpt": {
+      "filename": "coregpt.pth",
+      "url": "",
+      "sha256": ""
+    }
+  }
+}

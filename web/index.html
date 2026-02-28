@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CoreAI — Local AI Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg      : #06070d;
+      --surface : #0d0f1a;
+      --s2      : #131629;
+      --blue    : #5b8dee;
+      --purple  : #9b72f5;
+      --teal    : #2dd4bf;
+      --text    : #f0f2f8;
+      --text2   : #8b95b0;
+      --text3   : #404761;
+      --border  : rgba(255,255,255,.06);
+      --font    : 'Inter', system-ui, sans-serif;
+      --mono    : 'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(91,141,238,.3); border-radius: 4px; }
+
+    /* ── NAV ──────────────────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 48px;
+      background: rgba(6,7,13,0);
+      backdrop-filter: blur(0px);
+      border-bottom: 1px solid transparent;
+      transition: all .4s cubic-bezier(.4,0,.2,1);
+    }
+    nav.scrolled {
+      background: rgba(6,7,13,.85);
+      backdrop-filter: blur(24px);
+      border-bottom-color: var(--border);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg,var(--blue),var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 900; color: #fff;
+      box-shadow: 0 0 20px rgba(91,141,238,.4);
+    }
+    .nav-logo-text { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -.4px; }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a {
+      color: var(--text2); font-size: 13px; font-weight: 500;
+      text-decoration: none; transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      padding: 9px 22px; border-radius: 10px;
+      background: linear-gradient(135deg,var(--blue),var(--purple));
+      color: #fff !important; font-weight: 700 !important;
+      box-shadow: 0 0 20px rgba(91,141,238,.35);
+      transition: box-shadow .2s, opacity .2s !important;
+    }
+    .nav-cta:hover { opacity: .88 !important; box-shadow: 0 0 32px rgba(91,141,238,.5) !important; }
+
+    /* ── HERO ─────────────────────────────────────────────────────────── */
+    #hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      overflow: hidden;
+      padding: 120px 24px 80px;
+    }
+
+    /* Canvas particles */
+    #particles-canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    /* Gradient orbs */
+    .orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(100px); opacity: .35; pointer-events: none;
+    }
+    .orb-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, var(--blue) 0%, transparent 70%);
+      top: -100px; left: -150px;
+      animation: orbFloat1 12s ease-in-out infinite;
+    }
+    .orb-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, var(--purple) 0%, transparent 70%);
+      bottom: -50px; right: -100px;
+      animation: orbFloat2 15s ease-in-out infinite;
+    }
+    .orb-3 {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, var(--teal) 0%, transparent 70%);
+      top: 40%; left: 60%;
+      animation: orbFloat3 10s ease-in-out infinite;
+      opacity: .2;
+    }
+    @keyframes orbFloat1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(80px,60px) scale(1.1)} }
+    @keyframes orbFloat2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-60px,-80px) scale(1.15)} }
+    @keyframes orbFloat3 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-40px,30px)} 66%{transform:translate(30px,-40px)} }
+
+    /* Grid overlay */
+    .grid-overlay {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(91,141,238,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(91,141,238,.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    }
+
+    .hero-content {
+      position: relative; z-index: 2; max-width: 800px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* Animated badge */
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 30px;
+      border: 1px solid rgba(91,141,238,.3);
+      background: rgba(91,141,238,.08);
+      font-size: 12px; font-weight: 600; color: var(--blue);
+      letter-spacing: .5px; margin-bottom: 28px;
+      animation: fadeDown .8s cubic-bezier(.4,0,.2,1) both;
+    }
+    .badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 8px var(--teal);
+      animation: badgePulse 2s infinite;
+    }
+    @keyframes badgePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+    /* Big logo icon */
+    .hero-icon {
+      width: 110px; height: 110px; border-radius: 28px;
+      background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 36px;
+      box-shadow:
+        0 0 60px rgba(91,141,238,.35),
+        0 0 120px rgba(91,141,238,.15);
+      animation: iconPop .9s cubic-bezier(.34,1.56,.64,1) both .1s;
+      position: relative;
+    }
+    .hero-icon::after {
+      content: '';
+      position: absolute; inset: -12px;
+      border-radius: 36px;
+      border: 1px solid rgba(91,141,238,.15);
+      animation: iconRing 3s ease-in-out infinite;
+    }
+    .hero-icon::before {
+      content: '';
+      position: absolute; inset: -24px;
+      border-radius: 44px;
+      border: 1px solid rgba(91,141,238,.07);
+      animation: iconRing 3s ease-in-out infinite .4s;
+    }
+    @keyframes iconPop { from{opacity:0;transform:scale(.5) rotate(-10deg)} to{opacity:1;transform:scale(1) rotate(0)} }
+    @keyframes iconRing { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.06);opacity:.5} }
+    @keyframes fadeDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+
+    .hero-title {
+      font-size: clamp(52px, 8vw, 88px);
+      font-weight: 900;
+      letter-spacing: -3px;
+      line-height: 1.02;
+      margin-bottom: 18px;
+      animation: fadeUp .8s cubic-bezier(.4,0,.2,1) both .2s;
+    }
+    .hero-title .g {
+      background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 50%, var(--teal) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-size: 200% 200%;
+      animation: gradShift 4s ease infinite;
+    }
+    @keyframes gradShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+
+    .hero-sub {
+      font-size: 18px; font-weight: 400;
+      color: var(--text2); line-height: 1.7;
+      max-width: 540px; margin: 0 auto 42px;
+      animation: fadeUp .8s cubic-bezier(.4,0,.2,1) both .35s;
+    }
+
+    .hero-btns {
+      display: flex; align-items: center; justify-content: center;
+      gap: 14px; flex-wrap: wrap;
+      animation: fadeUp .8s cubic-bezier(.4,0,.2,1) both .5s;
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 14px 32px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      color: #fff; font-size: 15px; font-weight: 700;
+      text-decoration: none; border: none; cursor: pointer;
+      box-shadow: 0 0 30px rgba(91,141,238,.4), 0 8px 24px rgba(0,0,0,.3);
+      transition: all .25s cubic-bezier(.4,0,.2,1);
+      position: relative; overflow: hidden;
+    }
+    .btn-primary::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.15), transparent);
+      opacity: 0; transition: opacity .2s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(91,141,238,.6), 0 12px 32px rgba(0,0,0,.4); }
+    .btn-primary:hover::before { opacity: 1; }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 14px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.1);
+      color: var(--text2); font-size: 15px; font-weight: 600;
+      text-decoration: none; cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); color: var(--text); }
+
+    /* Scroll indicator */
+    .scroll-hint {
+      position: absolute; bottom: 36px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      color: var(--text3); font-size: 11px; letter-spacing: 1px;
+      text-transform: uppercase; font-weight: 600;
+      animation: fadeUp 1s both .8s;
+    }
+    .scroll-arrow {
+      width: 24px; height: 38px; border: 2px solid rgba(255,255,255,.12);
+      border-radius: 12px; display: flex; justify-content: center; padding-top: 6px;
+    }
+    .scroll-ball {
+      width: 4px; height: 8px; background: var(--blue);
+      border-radius: 2px; animation: scrollBall 1.8s cubic-bezier(.4,0,.2,1) infinite;
+    }
+    @keyframes scrollBall { 0%,100%{transform:translateY(0);opacity:1} 80%{transform:translateY(14px);opacity:0} }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── STATS BAR ────────────────────────────────────────────────────── */
+    #stats-bar {
+      padding: 0 48px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(4,1fr);
+      divide-x: 1px solid var(--border);
+    }
+    .stat-item {
+      padding: 36px 32px;
+      border-right: 1px solid var(--border);
+      opacity: 0; transform: translateY(20px);
+      transition: opacity .6s, transform .6s;
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-item.visible { opacity: 1; transform: translateY(0); }
+    .stat-item:nth-child(2) { transition-delay: .1s; }
+    .stat-item:nth-child(3) { transition-delay: .2s; }
+    .stat-item:nth-child(4) { transition-delay: .3s; }
+    .stat-num {
+      font-size: 42px; font-weight: 900; letter-spacing: -2px;
+      background: linear-gradient(135deg,var(--blue),var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      font-family: var(--mono);
+    }
+    .stat-unit { font-size: 20px; font-weight: 700; }
+    .stat-lbl { font-size: 13px; color: var(--text2); margin-top: 4px; font-weight: 500; }
+
+    /* ── SECTION COMMON ───────────────────────────────────────────────── */
+    section { padding: 120px 48px; }
+    .section-inner { max-width: 1100px; margin: 0 auto; }
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--blue); margin-bottom: 16px;
+    }
+    .section-tag::before {
+      content: ''; width: 20px; height: 2px; background: var(--blue); border-radius: 1px;
+    }
+    .section-title {
+      font-size: clamp(32px,4vw,52px);
+      font-weight: 900; letter-spacing: -1.5px;
+      line-height: 1.1; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 16px; color: var(--text2); line-height: 1.75;
+      max-width: 560px; margin-bottom: 64px;
+    }
+
+    /* reveal on scroll */
+    .reveal {
+      opacity: 0; transform: translateY(36px);
+      transition: opacity .7s cubic-bezier(.4,0,.2,1), transform .7s cubic-bezier(.4,0,.2,1);
+    }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+    .reveal-l { opacity: 0; transform: translateX(-36px); transition: opacity .7s cubic-bezier(.4,0,.2,1), transform .7s cubic-bezier(.4,0,.2,1); }
+    .reveal-l.in { opacity: 1; transform: translateX(0); }
+    .reveal-r { opacity: 0; transform: translateX(36px); transition: opacity .7s cubic-bezier(.4,0,.2,1), transform .7s cubic-bezier(.4,0,.2,1); }
+    .reveal-r.in { opacity: 1; transform: translateX(0); }
+    .d1 { transition-delay: .05s; }
+    .d2 { transition-delay: .15s; }
+    .d3 { transition-delay: .25s; }
+    .d4 { transition-delay: .35s; }
+
+    /* ── FEATURES ─────────────────────────────────────────────────────── */
+    #features { background: var(--bg); }
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 18px;
+    }
+    .feat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      position: relative; overflow: hidden;
+      transition: border-color .3s, transform .3s, box-shadow .3s;
+      cursor: default;
+    }
+    .feat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(91,141,238,.4), transparent);
+      opacity: 0; transition: opacity .3s;
+    }
+    .feat-card:hover {
+      border-color: rgba(91,141,238,.25);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.4), 0 0 40px rgba(91,141,238,.08);
+    }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-icon {
+      width: 52px; height: 52px; border-radius: 14px; margin-bottom: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      background: linear-gradient(135deg,rgba(91,141,238,.15),rgba(155,114,245,.15));
+      border: 1px solid rgba(91,141,238,.15);
+    }
+    .feat-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; letter-spacing: -.3px; }
+    .feat-text  { font-size: 13px; color: var(--text2); line-height: 1.7; }
+    .feat-card.big { grid-column: span 2; }
+
+    /* ── HOW IT WORKS ─────────────────────────────────────────────────── */
+    #how { background: var(--surface); }
+    .how-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .how-steps { display: flex; flex-direction: column; gap: 0; }
+    .how-step {
+      display: flex; gap: 20px;
+      padding: 24px 0; border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .how-step:last-child { border-bottom: none; }
+    .step-num {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg,var(--blue),var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: #fff;
+      box-shadow: 0 0 16px rgba(91,141,238,.4);
+    }
+    .step-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .step-text  { font-size: 13px; color: var(--text2); line-height: 1.65; }
+
+    /* Model architecture visualiser */
+    .arch-box {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px; font-family: var(--mono);
+    }
+    .arch-title { font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: 1px; margin-bottom: 20px; text-transform: uppercase; }
+    .arch-layer {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; border-radius: 10px; margin-bottom: 6px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      font-size: 12px; color: var(--text2);
+      position: relative; overflow: hidden;
+    }
+    .arch-layer::after {
+      content: '';
+      position: absolute; top: 0; left: 0; bottom: 0;
+      background: linear-gradient(90deg,var(--blue),var(--purple));
+      opacity: .12; border-radius: 8px;
+      width: var(--w, 0%);
+      transition: width 1.5s cubic-bezier(.4,0,.2,1);
+    }
+    .arch-layer.active::after { width: var(--w, 80%); }
+    .arch-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .arch-name { flex: 1; font-weight: 600; color: var(--text); }
+    .arch-val  { font-size: 11px; color: var(--blue); }
+
+    .arch-divider { height: 1px; background: var(--border); margin: 14px 0; }
+    .arch-param { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); padding: 4px 0; }
+    .arch-param span:last-child { color: var(--text); font-weight: 600; }
+
+    /* ── PRIVACY ──────────────────────────────────────────────────────── */
+    #privacy { background: var(--bg); overflow: hidden; }
+    .privacy-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+    }
+    .privacy-visual {
+      position: relative; height: 340px; display: flex; align-items: center; justify-content: center;
+    }
+    /* Animated rings */
+    .ring {
+      position: absolute; border-radius: 50%;
+      border: 1px solid;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ring-1 { width: 280px; height: 280px; border-color: rgba(91,141,238,.15); animation: ringRotate 20s linear infinite; }
+    .ring-2 { width: 200px; height: 200px; border-color: rgba(155,114,245,.2); animation: ringRotate 15s linear infinite reverse; }
+    .ring-3 { width: 130px; height: 130px; border-color: rgba(45,212,191,.25); animation: ringRotate 10s linear infinite; }
+    @keyframes ringRotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .ring-dot {
+      position: absolute; width: 8px; height: 8px; border-radius: 50%;
+      top: -4px; left: 50%; transform: translateX(-50%);
+    }
+    .ring-1 .ring-dot { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+    .ring-2 .ring-dot { background: var(--purple); box-shadow: 0 0 10px var(--purple); }
+    .ring-3 .ring-dot { background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+    .ring-center {
+      width: 70px; height: 70px; border-radius: 18px;
+      background: linear-gradient(135deg,var(--blue),var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 900; color: #fff; z-index: 1;
+      box-shadow: 0 0 40px rgba(91,141,238,.5);
+    }
+    /* Orbiting labels */
+    .ring-label {
+      position: absolute;
+      font-size: 10px; font-weight: 700; letter-spacing: .5px;
+      padding: 4px 10px; border-radius: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text2); white-space: nowrap;
+    }
+    .priv-items { display: flex; flex-direction: column; gap: 20px; }
+    .priv-item {
+      display: flex; gap: 16px; align-items: flex-start;
+      padding: 20px 22px; border-radius: 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .priv-item:hover { border-color: rgba(91,141,238,.25); box-shadow: 0 8px 32px rgba(0,0,0,.3); }
+    .priv-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+    .priv-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .priv-text  { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+    /* ── TERMINAL DEMO ────────────────────────────────────────────────── */
+    #demo { background: var(--surface); }
+    .demo-term {
+      background: #0d1117; border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05);
+      max-width: 740px; margin: 0 auto;
+    }
+    .term-bar {
+      display: flex; align-items: center; gap: 7px;
+      padding: 14px 18px; background: rgba(255,255,255,.04);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .term-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .td-r { background: #ff5f57; }
+    .td-y { background: #febc2e; }
+    .td-g { background: #28c840; }
+    .term-title { margin-left: 8px; font-size: 12px; color: rgba(255,255,255,.3); font-family: var(--mono); }
+    .term-body { padding: 24px 28px; font-family: var(--mono); font-size: 13px; line-height: 1.9; }
+    .t-prompt { color: #7c85a0; }
+    .t-cmd    { color: #e2e8f0; }
+    .t-info   { color: #5b8dee; }
+    .t-ok     { color: #34d399; }
+    .t-q      { color: #9b72f5; }
+    .t-a      { color: #e2e8f0; }
+    .t-dim    { color: #404761; }
+
+    .type-cursor {
+      display: inline-block; width: 2px; height: 1em;
+      background: var(--blue); vertical-align: text-bottom;
+      animation: termBlink .9s infinite;
+    }
+    @keyframes termBlink { 0%,45%{opacity:1} 55%,100%{opacity:0} }
+
+    /* ── CTA ──────────────────────────────────────────────────────────── */
+    #cta {
+      background: var(--bg);
+      padding: 140px 48px;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .cta-orb {
+      position: absolute; width: 800px; height: 400px;
+      background: radial-gradient(ellipse,rgba(91,141,238,.12) 0%,transparent 70%);
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    .cta-title {
+      font-size: clamp(36px,5vw,62px); font-weight: 900;
+      letter-spacing: -2px; line-height: 1.1; margin-bottom: 20px;
+    }
+    .cta-sub { font-size: 17px; color: var(--text2); margin-bottom: 44px; line-height: 1.6; }
+    .cta-btns { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+
+    /* ── FOOTER ───────────────────────────────────────────────────────── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 36px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .foot-logo { display: flex; align-items: center; gap: 9px; }
+    .foot-mark {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg,var(--blue),var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 900; color: #fff;
+    }
+    .foot-name { font-size: 14px; font-weight: 700; }
+    .foot-right { font-size: 12px; color: var(--text3); }
+
+    /* ── RESPONSIVE ───────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      nav { padding: 16px 24px; }
+      .nav-links { display: none; }
+      section { padding: 80px 24px; }
+      .feat-grid { grid-template-columns: 1fr; }
+      .feat-card.big { grid-column: span 1; }
+      .how-grid { grid-template-columns: 1fr; gap: 40px; }
+      .privacy-grid { grid-template-columns: 1fr; }
+      .privacy-visual { display: none; }
+      .stats-inner { grid-template-columns: repeat(2,1fr); }
+      .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="nav">
+  <a class="nav-logo" href="/">
+    <img src="/static/logo_nobg.png" style="width:36px;height:36px;object-fit:contain;border-radius:8px" alt="CoreAI">
+    <span class="nav-logo-text">CoreAI</span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#privacy">Privacy</a>
+    <a href="/app" class="nav-cta">Open Chat →</a>
+  </div>
+</nav>
+
+<section id="hero">
+  <canvas id="particles-canvas"></canvas>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="grid-overlay"></div>
+
+  <div class="hero-content">
+    <div class="hero-icon">
+      <img src="/static/logo_nobg.png" style="width:100px;height:100px;object-fit:contain;border-radius:18px" alt="CoreAI">
+    </div>
+    <div class="hero-badge">
+      <div class="badge-dot"></div>
+      100% Local · No Cloud · No API Keys
+    </div>
+    <h1 class="hero-title">
+      Your AI.<br>
+      <span class="g">Your Machine.</span>
+    </h1>
+    <p class="hero-sub">
+      CoreAI runs entirely on your hardware — a from-scratch 88M parameter language model
+      plus Ollama support. Zero data leaves your machine. Ever.
+    </p>
+    <div class="hero-btns">
+      <a href="/app" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Start Chatting
+      </a>
+      <a href="#features" class="btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+        Learn more
+      </a>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <div class="scroll-arrow"><div class="scroll-ball"></div></div>
+    scroll
+  </div>
+</section>
+
+<div id="stats-bar">
+  <div class="stats-inner">
+    <div class="stat-item reveal">
+      <div class="stat-num"><span class="counter" data-target="88">0</span><span class="stat-unit">M</span></div>
+      <div class="stat-lbl">Parameters (CoreGPT v2)</div>
+    </div>
+    <div class="stat-item reveal d1">
+      <div class="stat-num"><span class="counter" data-target="512">0</span></div>
+      <div class="stat-lbl">Token context window</div>
+    </div>
+    <div class="stat-item reveal d2">
+      <div class="stat-num"><span class="counter" data-target="150">0</span><span class="stat-unit">+</span></div>
+      <div class="stat-lbl">Fine-tune Q&amp;A pairs</div>
+    </div>
+    <div class="stat-item reveal d3">
+      <div class="stat-num"><span class="counter" data-target="100">0</span><span class="stat-unit">%</span></div>
+      <div class="stat-lbl">Local — zero cloud</div>
+    </div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-tag">Features</div>
+      <h2 class="section-title">Everything you need,<br>nothing you don't</h2>
+      <p class="section-sub">Built from scratch with PyTorch. No subscriptions, no telemetry, no limits.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card reveal d1">
+        <div class="feat-icon">🧠</div>
+        <div class="feat-title">From-scratch CoreGPT</div>
+        <div class="feat-text">88M parameter transformer built entirely in PyTorch. RoPE positional encoding, SwiGLU FFN, RMSNorm — modern architecture from the ground up.</div>
+      </div>
+      <div class="feat-card reveal d2">
+        <div class="feat-icon">🦙</div>
+        <div class="feat-title">Ollama Integration</div>
+        <div class="feat-text">Seamlessly switch to Ollama for production-quality models like Phi-3, Mistral, or LLaMA 3. One click in the sidebar.</div>
+      </div>
+      <div class="feat-card reveal d3">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title">Real-time Streaming</div>
+        <div class="feat-text">Server-Sent Events stream tokens as they're generated. Watch the AI think, word by word, with a beautiful animated cursor.</div>
+      </div>
+      <div class="feat-card big reveal d1">
+        <div class="feat-icon">🌐</div>
+        <div class="feat-title">Web Search</div>
+        <div class="feat-text">Augment any query with live DuckDuckGo results. The model sees fresh web context to answer questions about current events — no API key needed.</div>
+      </div>
+      <div class="feat-card reveal d2">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">Live System Stats</div>
+        <div class="feat-text">Real-time CPU, RAM, and GPU monitoring. See your VRAM usage and GPU temperature as the model runs.</div>
+      </div>
+      <div class="feat-card reveal d1">
+        <div class="feat-icon">🔒</div>
+        <div class="feat-title">Total Privacy</div>
+        <div class="feat-text">Your conversations never leave your machine. No accounts, no logging, no data collection. What you type is yours alone.</div>
+      </div>
+      <div class="feat-card reveal d2">
+        <div class="feat-icon">📦</div>
+        <div class="feat-title">Native Packages</div>
+        <div class="feat-text">Install as a .deb on Ubuntu/Debian, .rpm on Fedora, or run the Windows installer. Comes with a systemd service for always-on operation.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="section-inner">
+    <div class="how-grid">
+      <div>
+        <div class="reveal-l">
+          <div class="section-tag">Architecture</div>
+          <h2 class="section-title">Built on modern transformer architecture</h2>
+          <p class="section-sub">Every component hand-coded in PyTorch. No black boxes.</p>
+        </div>
+        <div class="how-steps">
+          <div class="how-step reveal-l d1">
+            <div class="step-num">1</div>
+            <div>
+              <div class="step-title">BPE Tokenizer (8192 vocab)</div>
+              <div class="step-text">Byte-pair encoding compresses text into subword tokens, enabling 3.5× compression on English text.</div>
+            </div>
+          </div>
+          <div class="how-step reveal-l d2">
+            <div class="step-num">2</div>
+            <div>
+              <div class="step-title">Causal Self-Attention + RoPE</div>
+              <div class="step-text">12 heads, 768 dimensions, 512-token context. Rotary positional embeddings for better generalisation.</div>
+            </div>
+          </div>
+          <div class="how-step reveal-l d3">
+            <div class="step-num">3</div>
+            <div>
+              <div class="step-title">SwiGLU Feed-Forward</div>
+              <div class="step-text">LLaMA-style gated linear units with 8/3 expansion ratio — more expressive than standard GELU FFN.</div>
+            </div>
+          </div>
+          <div class="how-step reveal-l d4">
+            <div class="step-num">4</div>
+            <div>
+              <div class="step-title">Two-phase Training</div>
+              <div class="step-text">20k steps pretraining on 29M chars of literature + Wikipedia. 2k steps fine-tuning on 150+ curated Q&amp;A pairs.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="arch-box reveal-r" id="arch-box">
+        <div class="arch-title">Model Architecture</div>
+        <div class="arch-layer" style="--w:95%" data-arch>
+          <div class="arch-dot" style="background:#5b8dee"></div>
+          <span class="arch-name">BPE Tokenizer</span>
+          <span class="arch-val">8192 vocab</span>
+        </div>
+        <div class="arch-layer" style="--w:80%" data-arch>
+          <div class="arch-dot" style="background:#9b72f5"></div>
+          <span class="arch-name">Token Embedding</span>
+          <span class="arch-val">d=768</span>
+        </div>
+        <div class="arch-layer" style="--w:90%" data-arch>
+          <div class="arch-dot" style="background:#5b8dee"></div>
+          <span class="arch-name">12× Transformer Block</span>
+          <span class="arch-val">RoPE + SwiGLU</span>
+        </div>
+        <div class="arch-layer" style="--w:70%" data-arch>
+          <div class="arch-dot" style="background:#2dd4bf"></div>
+          <span class="arch-name">RMSNorm</span>
+          <span class="arch-val">final</span>
+        </div>
+        <div class="arch-layer" style="--w:88%" data-arch>
+          <div class="arch-dot" style="background:#9b72f5"></div>
+          <span class="arch-name">LM Head</span>
+          <span class="arch-val">→ logits</span>
+        </div>
+        <div class="arch-divider"></div>
+        <div class="arch-param"><span>Total parameters</span><span>88,099,584</span></div>
+        <div class="arch-param"><span>Precision</span><span>bf16 mixed</span></div>
+        <div class="arch-param"><span>Context</span><span>512 tokens</span></div>
+        <div class="arch-param"><span>Layers</span><span>12 × (attn + ffn)</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="section-inner">
+    <div class="privacy-grid">
+      <div>
+        <div class="reveal-l">
+          <div class="section-tag">Privacy</div>
+          <h2 class="section-title">Zero data leaves<br>your machine</h2>
+          <p class="section-sub">CoreAI is designed from the ground up to be fully offline. Your conversations are yours.</p>
+        </div>
+        <div class="priv-items">
+          <div class="priv-item reveal-l d1">
+            <div class="priv-icon">🔐</div>
+            <div>
+              <div class="priv-title">No accounts required</div>
+              <div class="priv-text">Launch and use immediately. No sign-up, no email, no subscription. Just open the browser.</div>
+            </div>
+          </div>
+          <div class="priv-item reveal-l d2">
+            <div class="priv-icon">🚫</div>
+            <div>
+              <div class="priv-title">No telemetry or logging</div>
+              <div class="priv-text">Zero analytics, zero crash reporting, zero phone-home. The code is open — you can verify it yourself.</div>
+            </div>
+          </div>
+          <div class="priv-item reveal-l d3">
+            <div class="priv-icon">💾</div>
+            <div>
+              <div class="priv-title">All data stored locally</div>
+              <div class="priv-text">Models, weights, conversation history — everything lives in your <code style="font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">/opt/coreai</code> folder.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="privacy-visual reveal-r">
+        <div class="ring ring-1">
+          <div class="ring-dot"></div>
+        </div>
+        <div class="ring ring-2">
+          <div class="ring-dot"></div>
+        </div>
+        <div class="ring ring-3">
+          <div class="ring-dot"></div>
+        </div>
+        <div class="ring-center">C</div>
+        <div class="ring-label" style="top:14px;left:50%;transform:translateX(-50%)">Your Machine</div>
+        <div class="ring-label" style="bottom:14px;left:50%;transform:translateX(-50%)">Fully Offline</div>
+        <div class="ring-label" style="left:0;top:50%;transform:translateY(-50%)">No Cloud</div>
+        <div class="ring-label" style="right:0;top:50%;transform:translateY(-50%)">No API</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="section-inner">
+    <div class="reveal" style="text-align:center;margin-bottom:48px">
+      <div class="section-tag" style="justify-content:center">Terminal</div>
+      <h2 class="section-title">Up and running in seconds</h2>
+      <p class="section-sub" style="margin:0 auto">Start the server, open the browser. That's it.</p>
+    </div>
+    <div class="demo-term reveal">
+      <div class="term-bar">
+        <div class="term-dot td-r"></div>
+        <div class="term-dot td-y"></div>
+        <div class="term-dot td-g"></div>
+        <span class="term-title">stormy@pc — ~/linux_ai</span>
+      </div>
+      <div class="term-body" id="term-body">
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cta">
+  <div class="cta-orb"></div>
+  <div class="section-inner" style="position:relative;z-index:1;text-align:center">
+    <div class="reveal">
+      <h2 class="cta-title">Ready to run AI<br><span style="background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">on your terms?</span></h2>
+      <p class="cta-sub">Open the chat and start your first conversation.<br>CoreAI is already running on localhost:8080.</p>
+      <div class="cta-btns">
+        <a href="/app" class="btn-primary" style="font-size:16px;padding:16px 40px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Open CoreAI Chat
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-logo">
+    <img src="/static/logo_nobg.png" style="width:28px;height:28px;object-fit:contain" alt="CoreAI">
+    <span class="foot-name">CoreAI</span>
+  </div>
+  <div class="foot-right">100% local · open source · no cloud</div>
+</footer>
+
+<script>
+/* ── Particles ───────────────────────────────────────────────────────────── */
+const canvas = document.getElementById('particles-canvas');
+const ctx    = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resize() {
+  W = canvas.width  = canvas.offsetWidth;
+  H = canvas.height = canvas.offsetHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x  = Math.random() * W;
+    this.y  = Math.random() * H;
+    this.vx = (Math.random() - .5) * .3;
+    this.vy = (Math.random() - .5) * .3;
+    this.r  = Math.random() * 1.5 + .5;
+    this.a  = Math.random() * .4 + .1;
+    this.hue= Math.random() < .5 ? 220 : 260;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    if (this.x < 0||this.x > W||this.y < 0||this.y > H) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fillStyle = `hsla(${this.hue},80%,70%,${this.a})`;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+/* draw connections */
+function drawLines() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i+1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const d  = Math.sqrt(dx*dx + dy*dy);
+      if (d < 90) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(91,141,238,${(.12 * (1 - d/90)).toFixed(3)})`;
+        ctx.lineWidth   = .6;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+/* mouse parallax */
+let mx = W/2, my = H/2;
+window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+function loop() {
+  ctx.clearRect(0, 0, W, H);
+  /* subtle mouse influence */
+  particles.forEach(p => {
+    const dx = (mx - W/2) * .00008;
+    const dy = (my - H/2) * .00008;
+    p.vx += dx * .01; p.vy += dy * .01;
+    p.vx *= .995; p.vy *= .995;
+    p.update(); p.draw();
+  });
+  drawLines();
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* ── Nav scroll ──────────────────────────────────────────────────────────── */
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
+
+/* ── Reveal on scroll ────────────────────────────────────────────────────── */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('in', 'visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: .12 });
+
+document.querySelectorAll('.reveal,.reveal-l,.reveal-r,.stat-item').forEach(el => observer.observe(el));
+
+/* ── Arch bars ────────────────────────────────────────────────────────────── */
+const archObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.querySelectorAll('[data-arch]').forEach((el,i) => {
+        setTimeout(() => el.classList.add('active'), i * 150);
+      });
+      archObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: .3 });
+const archBox = document.getElementById('arch-box');
+if (archBox) archObserver.observe(archBox);
+
+/* ── Number counters ─────────────────────────────────────────────────────── */
+const counterObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.querySelectorAll('.counter').forEach(el => {
+      const target = +el.dataset.target;
+      const duration = 1600;
+      const start = performance.now();
+      const tick = now => {
+        const t = Math.min((now - start) / duration, 1);
+        const ease = 1 - Math.pow(1-t, 3);
+        el.textContent = Math.round(ease * target);
+        if (t < 1) requestAnimationFrame(tick);
+        else el.textContent = target;
+      };
+      requestAnimationFrame(tick);
+    });
+    counterObs.unobserve(e.target);
+  });
+}, { threshold: .4 });
+document.querySelectorAll('#stats-bar').forEach(el => counterObs.observe(el));
+
+/* ── Terminal typewriter ─────────────────────────────────────────────────── */
+const lines = [
+  { t: 'prompt', text: '$ python server.py' },
+  { t: 'blank' },
+  { t: 'info',   text: '  ╔═══════════════════════════════════════════╗' },
+  { t: 'info',   text: '  ║          CoreAI  Web Server               ║' },
+  { t: 'info',   text: '  ║   http://localhost:8080                   ║' },
+  { t: 'info',   text: '  ╚═══════════════════════════════════════════╝' },
+  { t: 'blank' },
+  { t: 'ok',     text: '  ✓ CoreGPT v2 loaded (88M params, cuda)' },
+  { t: 'ok',     text: '  ✓ Tokenizer ready (8192 vocab, BPE)' },
+  { t: 'ok',     text: '  ✓ Ollama available — phi3:mini, llama2' },
+  { t: 'blank' },
+  { t: 'dim',    text: '  INFO:     Application startup complete.' },
+  { t: 'dim',    text: '  INFO:     Uvicorn running on http://0.0.0.0:8080' },
+  { t: 'blank' },
+  { t: 'q',      text: '  You  › Write a Python quicksort function' },
+  { t: 'a',      text: '  AI   › def quicksort(arr):' },
+  { t: 'a',      text: '           if len(arr) <= 1: return arr' },
+  { t: 'a',      text: '           pivot = arr[len(arr)//2]' },
+  { t: 'a',      text: '           return quicksort([x for x in arr if x<pivot])' },
+  { t: 'a',      text: '                + [pivot]' },
+  { t: 'a',      text: '                + quicksort([x for x in arr if x>pivot])' },
+];
+
+const termBody = document.getElementById('term-body');
+let lineIdx = 0, termStarted = false;
+
+function typeLines() {
+  if (lineIdx >= lines.length) {
+    termBody.innerHTML += `<div><span class="t-prompt">$ </span><span class="type-cursor"></span></div>`;
+    return;
+  }
+  const line = lines[lineIdx++];
+  if (line.t === 'blank') {
+    termBody.innerHTML += '<br>';
+    setTimeout(typeLines, 60);
+    return;
+  }
+  const cls = { prompt:'t-cmd t-prompt', info:'t-info', ok:'t-ok', dim:'t-dim', q:'t-q', a:'t-a' }[line.t] || 't-a';
+  const isPrompt = line.t === 'prompt';
+  const prefix   = isPrompt ? '<span class="t-prompt">$ </span>' : '';
+  const div = document.createElement('div');
+  div.innerHTML = prefix + `<span class="${cls}"></span>`;
+  termBody.appendChild(div);
+  const span  = div.querySelector('span:last-child');
+  let   ci    = 0;
+  const chars = line.text;
+  function typeChar() {
+    if (ci < chars.length) {
+      span.textContent += chars[ci++];
+      termBody.scrollTop = termBody.scrollHeight;
+      setTimeout(typeChar, isPrompt ? 38 : 10);
+    } else {
+      setTimeout(typeLines, line.t === 'prompt' ? 300 : 40);
+    }
+  }
+  typeChar();
+}
+
+/* Start terminal when visible */
+const termObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting && !termStarted) {
+      termStarted = true;
+      setTimeout(typeLines, 400);
+      termObs.unobserve(e.target);
+    }
+  });
+}, { threshold: .4 });
+termObs.observe(termBody);
+
+/* ── Parallax on scroll ──────────────────────────────────────────────────── */
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  document.querySelectorAll('.orb-1').forEach(el => { el.style.transform = `translateY(${y*.08}px)`; });
+  document.querySelectorAll('.orb-2').forEach(el => { el.style.transform = `translateY(${-y*.06}px)`; });
+  document.querySelectorAll('.orb-3').forEach(el => { el.style.transform = `translateY(${y*.04}px)`; });
+}, { passive: true });
+</script>
+</body>
+</html>

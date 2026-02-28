@@ -1,0 +1,45 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Model weights (distributed via GitHub Releases)
+models/*.pth
+models/*.joblib
+models/scaler.joblib
+
+# Keep tokenizer (small, needed to run)
+!models/tokenizer.json
+
+# Dataset (large / re-downloadable)
+data/MNIST/
+
+# Logs
+logs/
+
+# Old logo
+logo.png
+
+# PyInstaller
+*.spec
+dist/
+build/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+.claude/
