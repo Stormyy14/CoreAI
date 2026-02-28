@@ -30,3 +30,5 @@ duckduckgo-search>=5.3.0
 
 # NOTE: no external LLM API needed – the language model is built and trained
 # from scratch inside coreai.py using only PyTorch.
+pypdf
+python-multipart

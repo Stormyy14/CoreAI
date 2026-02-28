@@ -27,10 +27,12 @@ import asyncio
 import hashlib
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import time
 import urllib.request
+import uuid
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -40,7 +42,7 @@ GITHUB_RAW = "https://raw.githubusercontent.com/Stormyy14/CoreAI/main/version.js
 
 # ── FastAPI / Starlette ────────────────────────────────────────────────────────
 try:
-    from fastapi import FastAPI, Request
+    from fastapi import FastAPI, Request, UploadFile, File
     from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.middleware.cors import CORSMiddleware
@@ -374,6 +376,195 @@ async def _sse_error(msg: str) -> AsyncGenerator[str, None]:
 async def clear_history() -> JSONResponse:
     manager.clear_history()
     return JSONResponse({"ok": True})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Conversation history (SQLite)
+# ══════════════════════════════════════════════════════════════════════════════
+
+DB_PATH = ROOT / "data" / "history.db"
+
+
+def _db() -> sqlite3.Connection:
+    c = sqlite3.connect(str(DB_PATH))
+    c.row_factory = sqlite3.Row
+    c.execute("PRAGMA foreign_keys = ON")
+    return c
+
+
+def _init_db() -> None:
+    (ROOT / "data").mkdir(exist_ok=True)
+    with _db() as c:
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS conversations (
+                id TEXT PRIMARY KEY,
+                title TEXT DEFAULT 'New Chat',
+                backend TEXT DEFAULT 'coreai',
+                created_at REAL,
+                updated_at REAL
+            )""")
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conv_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at REAL
+            )""")
+        c.commit()
+
+
+_init_db()
+
+
+@app.get("/api/history")
+async def list_conversations() -> JSONResponse:
+    with _db() as c:
+        rows = c.execute(
+            "SELECT id, title, backend, updated_at FROM conversations ORDER BY updated_at DESC LIMIT 50"
+        ).fetchall()
+    return JSONResponse([dict(r) for r in rows])
+
+
+@app.post("/api/history")
+async def new_conversation(request: Request) -> JSONResponse:
+    body   = await request.json()
+    cid    = str(uuid.uuid4())
+    now    = time.time()
+    title  = (body.get("title") or "New Chat")[:60]
+    backend = body.get("backend", "coreai")
+    with _db() as c:
+        c.execute(
+            "INSERT INTO conversations (id, title, backend, created_at, updated_at) VALUES (?,?,?,?,?)",
+            (cid, title, backend, now, now),
+        )
+        c.commit()
+    return JSONResponse({"id": cid})
+
+
+@app.get("/api/history/{conv_id}")
+async def get_conversation(conv_id: str) -> JSONResponse:
+    with _db() as c:
+        conv = c.execute("SELECT * FROM conversations WHERE id=?", (conv_id,)).fetchone()
+        if not conv:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        msgs = c.execute(
+            "SELECT role, content FROM messages WHERE conv_id=? ORDER BY created_at",
+            (conv_id,),
+        ).fetchall()
+    return JSONResponse({"conv": dict(conv), "messages": [dict(m) for m in msgs]})
+
+
+@app.delete("/api/history/{conv_id}")
+async def delete_conversation(conv_id: str) -> JSONResponse:
+    with _db() as c:
+        c.execute("DELETE FROM conversations WHERE id=?", (conv_id,))
+        c.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/history/{conv_id}/message")
+async def save_message(conv_id: str, request: Request) -> JSONResponse:
+    body    = await request.json()
+    role    = body.get("role", "user")
+    content = body.get("content", "")
+    title   = body.get("title")          # optional: update title
+    now     = time.time()
+    with _db() as c:
+        c.execute(
+            "INSERT INTO messages (conv_id, role, content, created_at) VALUES (?,?,?,?)",
+            (conv_id, role, content, now),
+        )
+        if title:
+            c.execute("UPDATE conversations SET title=?, updated_at=? WHERE id=?",
+                      (title[:60], now, conv_id))
+        else:
+            c.execute("UPDATE conversations SET updated_at=? WHERE id=?", (now, conv_id))
+        c.commit()
+    return JSONResponse({"ok": True})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# File upload
+# ══════════════════════════════════════════════════════════════════════════════
+
+MAX_FILE_CHARS = 12_000
+
+
+def _extract_text(filename: str, data: bytes) -> str:
+    name = filename.lower()
+    if name.endswith(".pdf"):
+        try:
+            import io
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(data))
+            text = "\n".join(p.extract_text() or "" for p in reader.pages)
+        except ImportError:
+            text = "[pypdf not installed — install with: pip install pypdf]"
+        except Exception as e:
+            text = f"[PDF error: {e}]"
+    else:
+        text = data.decode("utf-8", errors="replace")
+    if len(text) > MAX_FILE_CHARS:
+        text = text[:MAX_FILE_CHARS] + f"\n...[truncated — showing {MAX_FILE_CHARS} of {len(text)} chars]"
+    return text
+
+
+@app.post("/api/history/restore")
+async def restore_message(request: Request) -> JSONResponse:
+    """Restore a Q/A pair into the active backend's in-memory history."""
+    body = await request.json()
+    q, a = body.get("q",""), body.get("a","")
+    be = manager.get()
+    if be and q and a:
+        be.history.append((q, a))
+    return JSONResponse({"ok": True})
+
+
+# ── Ollama model management ────────────────────────────────────────────────────
+
+@app.post("/api/ollama/pull")
+async def ollama_pull(request: Request) -> JSONResponse:
+    body  = await request.json()
+    model = body.get("model","").strip()
+    if not model:
+        return JSONResponse({"error": "model required"}, status_code=400)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(
+        None,
+        lambda: subprocess.Popen(["ollama", "pull", model],
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL),
+    )
+    return JSONResponse({"ok": True, "msg": f"Pulling {model} in background…"})
+
+
+@app.post("/api/ollama/remove")
+async def ollama_remove(request: Request) -> JSONResponse:
+    body  = await request.json()
+    model = body.get("model","").strip()
+    if not model:
+        return JSONResponse({"error": "model required"}, status_code=400)
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None,
+        lambda: subprocess.run(["ollama", "rm", model], capture_output=True, text=True),
+    )
+    if result.returncode != 0:
+        return JSONResponse({"error": result.stderr.strip()}, status_code=400)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
+    data     = await file.read()
+    filename = file.filename or "file"
+    text     = _extract_text(filename, data)
+    return JSONResponse({
+        "filename": filename,
+        "content" : text,
+        "chars"   : len(text),
+        "size_kb" : round(len(data) / 1024, 1),
+    })
 
 
 # ══════════════════════════════════════════════════════════════════════════════
