@@ -24,13 +24,19 @@ POST /api/clear           → clear conversation history
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import os
+import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 from typing import AsyncGenerator
 
 import psutil
+
+GITHUB_RAW = "https://raw.githubusercontent.com/Stormyy14/coreai/main/version.json"
 
 # ── FastAPI / Starlette ────────────────────────────────────────────────────────
 try:
@@ -368,6 +374,147 @@ async def _sse_error(msg: str) -> AsyncGenerator[str, None]:
 async def clear_history() -> JSONResponse:
     manager.clear_history()
     return JSONResponse({"ok": True})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Update system
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _read_local_version() -> dict:
+    p = ROOT / "version.json"
+    if p.exists():
+        return json.loads(p.read_text())
+    return {"version": "0.0.0"}
+
+
+def _fetch_remote_version() -> dict:
+    with urllib.request.urlopen(GITHUB_RAW, timeout=8) as r:
+        return json.loads(r.read())
+
+
+def _version_tuple(v: str) -> tuple:
+    try:
+        return tuple(int(x) for x in v.split("."))
+    except Exception:
+        return (0, 0, 0)
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+@app.get("/api/version")
+async def get_version() -> JSONResponse:
+    return JSONResponse(_read_local_version())
+
+
+@app.get("/api/check-update")
+async def check_update() -> JSONResponse:
+    try:
+        loop   = asyncio.get_event_loop()
+        remote = await loop.run_in_executor(None, _fetch_remote_version)
+        local  = _read_local_version()
+        has_update = _version_tuple(remote["version"]) > _version_tuple(local["version"])
+        return JSONResponse({
+            "has_update"    : has_update,
+            "local_version" : local.get("version", "?"),
+            "remote_version": remote.get("version", "?"),
+            "changelog"     : remote.get("changelog", ""),
+        })
+    except Exception as exc:
+        return JSONResponse({"error": str(exc), "has_update": False}, status_code=200)
+
+
+@app.get("/api/update")
+async def do_update() -> StreamingResponse:
+    return StreamingResponse(
+        _update_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+async def _update_stream() -> AsyncGenerator[str, None]:
+    def sse(msg: str, kind: str = "log") -> str:
+        return f"data: {json.dumps({'type': kind, 'msg': msg})}\n\n"
+
+    loop = asyncio.get_event_loop()
+
+    # ── 1. git pull ────────────────────────────────────────────────────────────
+    yield sse("Pulling latest code from GitHub…")
+    try:
+        result = await loop.run_in_executor(
+            None,
+            lambda: subprocess.run(
+                ["git", "pull", "origin", "main"],
+                cwd=str(ROOT), capture_output=True, text=True, timeout=60,
+            ),
+        )
+        if result.returncode != 0:
+            yield sse(f"git pull error: {result.stderr.strip()}", "error")
+            return
+        yield sse(result.stdout.strip() or "Already up to date.")
+    except Exception as exc:
+        yield sse(f"git pull failed: {exc}", "error")
+        return
+
+    # ── 2. Download new model weights if listed in remote version.json ─────────
+    try:
+        remote = await loop.run_in_executor(None, _fetch_remote_version)
+    except Exception as exc:
+        yield sse(f"Could not fetch remote version.json: {exc}", "error")
+        return
+
+    models_dir = ROOT / "models"
+    models_dir.mkdir(exist_ok=True)
+
+    for name, info in remote.get("models", {}).items():
+        url      = info.get("url", "")
+        expected = info.get("sha256", "")
+        filename = info.get("filename", f"{name}.pth")
+        dest     = models_dir / filename
+
+        if not url:
+            continue
+
+        # Skip if already up to date
+        if dest.exists() and expected and _sha256(dest) == expected:
+            yield sse(f"Model {filename} already up to date.")
+            continue
+
+        yield sse(f"Downloading {filename}…")
+        try:
+            def _download():
+                urllib.request.urlretrieve(url, str(dest))
+            await loop.run_in_executor(None, _download)
+
+            if expected:
+                actual = await loop.run_in_executor(None, lambda: _sha256(dest))
+                if actual != expected:
+                    dest.unlink(missing_ok=True)
+                    yield sse(f"Checksum mismatch for {filename}!", "error")
+                    return
+            yield sse(f"Downloaded {filename}.")
+        except Exception as exc:
+            yield sse(f"Download failed: {exc}", "error")
+            return
+
+    # ── 3. Write new local version.json ────────────────────────────────────────
+    (ROOT / "version.json").write_text(json.dumps(remote, indent=2))
+
+    # ── 4. Restart server ──────────────────────────────────────────────────────
+    yield sse("Update complete — restarting…", "done")
+    await asyncio.sleep(0.5)
+
+    async def _restart():
+        await asyncio.sleep(1)
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+    asyncio.create_task(_restart())
 
 
 # ══════════════════════════════════════════════════════════════════════════════

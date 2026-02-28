@@ -158,6 +158,30 @@
     }
     .clr-btn:hover { color: var(--red); }
 
+    /* Update */
+    #upd-bar {
+      display:none;margin:8px 10px;padding:9px 12px;border-radius:7px;
+      border:1px solid var(--bdr2);background:var(--sur);
+    }
+    #upd-bar.show { display:block; }
+    .upd-top { display:flex;align-items:center;justify-content:space-between;gap:8px; }
+    .upd-label { font-size:11px;font-weight:600;color:var(--t1); }
+    .upd-ver { font-size:9px;color:var(--t3);font-family:var(--mono); }
+    .upd-log { font-size:10px;color:var(--t2);margin-top:4px;line-height:1.5; }
+    .upd-btn {
+      margin-top:8px;width:100%;padding:6px;border-radius:6px;
+      border:1px solid var(--bdr2);background:transparent;
+      color:var(--t1);font-size:11px;font-weight:600;cursor:pointer;
+      font-family:var(--font);transition:background .15s;
+    }
+    .upd-btn:hover { background:rgba(255,255,255,.08); }
+    .upd-btn:disabled { opacity:.4;cursor:not-allowed; }
+    #upd-progress {
+      display:none;margin-top:6px;font-size:10px;color:var(--t2);
+      font-family:var(--mono);line-height:1.7;max-height:80px;overflow-y:auto;
+    }
+    #upd-progress.show { display:block; }
+
     .sb-foot {
       padding: 10px 16px; border-top: 1px solid var(--bdr);
       font-size: 10px; color: var(--t3); line-height: 1.7;
@@ -368,6 +392,16 @@
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
       Clear conversation
     </button>
+  </div>
+
+  <div id="upd-bar">
+    <div class="upd-top">
+      <span class="upd-label">Update available</span>
+      <span class="upd-ver" id="upd-ver"></span>
+    </div>
+    <div class="upd-log" id="upd-log"></div>
+    <button class="upd-btn" id="upd-btn" onclick="doUpdate()">Update now</button>
+    <div id="upd-progress"></div>
   </div>
 
   <div class="sb-foot">
@@ -597,9 +631,53 @@ async function clearAll() {
   await fetch('/api/clear',{method:'POST'});
 }
 
+/* ── Update system ─────────────────────────────────────────────────────────── */
+async function checkUpdate() {
+  try {
+    const d = await fetch('/api/check-update').then(r=>r.json());
+    if(d.has_update) {
+      document.getElementById('upd-bar').classList.add('show');
+      document.getElementById('upd-ver').textContent = `v${d.local_version} → v${d.remote_version}`;
+      document.getElementById('upd-log').textContent = d.changelog || '';
+    }
+  } catch {}
+}
+
+async function doUpdate() {
+  const btn  = document.getElementById('upd-btn');
+  const prog = document.getElementById('upd-progress');
+  btn.disabled = true;
+  btn.textContent = 'Updating…';
+  prog.classList.add('show');
+  prog.textContent = '';
+
+  const es = new EventSource('/api/update');
+  es.onmessage = ev => {
+    const d = JSON.parse(ev.data);
+    prog.textContent += d.msg + '\n';
+    prog.scrollTop = prog.scrollHeight;
+    if(d.type === 'done') {
+      es.close();
+      prog.textContent += 'Reloading…\n';
+      setTimeout(() => location.reload(), 2500);
+    }
+    if(d.type === 'error') {
+      es.close();
+      btn.disabled = false;
+      btn.textContent = 'Retry';
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    btn.disabled = false;
+    btn.textContent = 'Retry';
+  };
+}
+
 document.getElementById('sendbtn').disabled=true;
 pollStatus(); pollBackends(); fetchStats();
 setInterval(fetchStats,3000); setInterval(pollBackends,5000);
+checkUpdate(); setInterval(checkUpdate, 5*60*1000); // check every 5 min
 </script>
 </body>
 </html>
