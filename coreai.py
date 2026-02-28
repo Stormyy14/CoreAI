@@ -9,14 +9,14 @@ Install dependencies:
     pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 Run modes:
-    python linux_ai.py              → interactive menu  (default)
-    python linux_ai.py train        → train / retrain ALL models (CNN + LLM + sklearn)
-    python linux_ai.py train-llm    → train only the built-in LLM (downloads corpus automatically)
-    python linux_ai.py chat         → conversational AI shell (powered by the built-in LLM)
-    python linux_ai.py monitor      → live system dashboard (Ctrl-C to exit)
-    python linux_ai.py agent        → natural-language AI agent (system control + LLM)
-    python linux_ai.py predict      → infer a digit from the MNIST test set
-    python linux_ai.py control      → one-shot system-control snapshot
+    python coreai.py              → interactive menu  (default)
+    python coreai.py train        → train / retrain ALL models (CNN + LLM + sklearn)
+    python coreai.py train-llm    → train only the built-in LLM (downloads corpus automatically)
+    python coreai.py chat         → conversational AI shell (powered by the built-in LLM)
+    python coreai.py monitor      → live system dashboard (Ctrl-C to exit)
+    python coreai.py agent        → natural-language AI agent (system control + LLM)
+    python coreai.py predict      → infer a digit from the MNIST test set
+    python coreai.py control      → one-shot system-control snapshot
 
 Built-in LLM architecture (GPT-style, trained from scratch):
     Tokenizer  : character-level (no external deps)
@@ -27,7 +27,7 @@ Built-in LLM architecture (GPT-style, trained from scratch):
     Inference  : temperature + top-k autoregressive sampling
 
 Quick usage after training:
-    >>> from linux_ai import load_and_predict, LLMBackend
+    >>> from coreai import load_and_predict, LLMBackend
     >>> digit = load_and_predict("models/mnist_cnn.pth", dataset_index=42)
     >>> llm = LLMBackend.load(); print(llm.chat("What is a neural network?"))
 """
@@ -103,11 +103,11 @@ for _d in (MODELS_DIR, LOGS_DIR, DATA_DIR):
     _d.mkdir(exist_ok=True)
 
 logging.basicConfig(
-    filename=LOGS_DIR / "linux_ai.log",
+    filename=LOGS_DIR / "coreai.log",
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
 )
-log = logging.getLogger("linux_ai")
+log = logging.getLogger("coreai")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1096,7 +1096,7 @@ class AIAgent:
     def run(self) -> None:
         llm_status = (
             "[green]Built-in LLM ready[/]" if self.llm is not None
-            else "[yellow]LLM not trained – run 'train' or 'python linux_ai.py train-llm'[/]"
+            else "[yellow]LLM not trained – run 'train' or 'python coreai.py train-llm'[/]"
         )
         console.print(
             Panel(
@@ -2930,7 +2930,7 @@ class LLMBackend:
         """Load a trained CoreGPT checkpoint from disk."""
         if not cfg.llm_path.exists() or not cfg.tok_path.exists():
             raise FileNotFoundError(
-                "LLM not found. Run:  python linux_ai.py train-llm"
+                "LLM not found. Run:  python coreai.py train-llm"
             )
         ckpt  = torch.load(cfg.llm_path, map_location=cfg.device, weights_only=False)
         model = CoreGPT(
@@ -3092,7 +3092,7 @@ def load_and_predict(model_path: str | Path, dataset_index: int = 0) -> int:
 
     Usage example
     -------------
-    >>> from linux_ai import load_and_predict
+    >>> from coreai import load_and_predict
     >>> predicted = load_and_predict("models/mnist_cnn.pth", dataset_index=42)
     >>> print(f"Predicted digit: {predicted}")
 
@@ -3277,16 +3277,16 @@ def interactive_menu() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="linux_ai",
+        prog="coreai",
         description="LinuxAI – AI-Powered Linux Intelligence & Control Platform",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  python linux_ai.py                   # interactive menu\n"
-            "  python linux_ai.py train             # train all models\n"
-            "  python linux_ai.py monitor           # live dashboard\n"
-            "  python linux_ai.py agent             # AI shell\n"
-            "  python linux_ai.py predict --index 7 # classify digit\n"
+            "  python coreai.py                   # interactive menu\n"
+            "  python coreai.py train             # train all models\n"
+            "  python coreai.py monitor           # live dashboard\n"
+            "  python coreai.py agent             # AI shell\n"
+            "  python coreai.py predict --index 7 # classify digit\n"
         ),
     )
     sub = parser.add_subparsers(dest="cmd")
@@ -3320,7 +3320,7 @@ def main() -> None:
         if not cfg.llm_pretrain_path.exists():
             console.print(
                 "[red]No pretrained weights found.[/] "
-                "Run [cyan]python linux_ai.py train-llm[/] first "
+                "Run [cyan]python coreai.py train-llm[/] first "
                 "(pretrain weights are saved automatically after pretraining)."
             )
             sys.exit(1)
@@ -3345,7 +3345,7 @@ def main() -> None:
         if not cfg.cnn_path.exists():
             console.print(
                 "[red]No trained CNN found.[/] "
-                "Run [cyan]python linux_ai.py train[/] first."
+                "Run [cyan]python coreai.py train[/] first."
             )
             sys.exit(1)
         load_and_predict(cfg.cnn_path, args.index)

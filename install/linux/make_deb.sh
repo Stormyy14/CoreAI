@@ -47,8 +47,8 @@ if [[ ! -d venv ]]; then
 fi
 source venv/bin/activate
 case "${1:-}" in
-    train) python linux_ai.py train-llm ;;
-    chat)  python linux_ai.py chat ;;
+    train) python coreai.py train-llm ;;
+    chat)  python coreai.py chat ;;
     *)
         echo "Starting CoreAI at http://localhost:8080"
         python server.py ;;

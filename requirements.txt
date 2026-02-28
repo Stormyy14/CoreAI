@@ -29,4 +29,4 @@ uvicorn[standard]>=0.29.0
 duckduckgo-search>=5.3.0
 
 # NOTE: no external LLM API needed – the language model is built and trained
-# from scratch inside linux_ai.py using only PyTorch.
+# from scratch inside coreai.py using only PyTorch.

@@ -4,7 +4,7 @@ Local AI platform built from scratch. Runs entirely on your machine — no cloud
 
 ![Version](https://img.shields.io/badge/version-1.0.0-white?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.10+-white?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-white?style=flat-square)
+![License](https://img.shields.io/badge/license-CoreAI%20Community-white?style=flat-square)
 
 ---
 
@@ -55,7 +55,7 @@ Model weights are not included in the repository (too large for git).
 
 **Option A — Train from scratch:**
 ```bash
-python linux_ai.py train-llm
+python coreai.py train-llm
 # ~40 min on a modern GPU
 ```
 
@@ -68,7 +68,7 @@ Check the [Releases](https://github.com/Stormyy14/CoreAI/releases) page for pre-
 
 ```
 CoreAI/
-├── linux_ai.py        # Core AI engine (models, training, inference)
+├── coreai.py        # Core AI engine (models, training, inference)
 ├── server.py          # FastAPI web server + SSE + update system
 ├── requirements.txt
 ├── version.json       # Version manifest for auto-updates
@@ -108,13 +108,13 @@ CoreAI/
 
 ```bash
 # Full train (pretrain + finetune) ~40 min on GPU
-python linux_ai.py train-llm
+python coreai.py train-llm
 
 # Fine-tune only (requires models/coregpt_pretrain.pth)
-python linux_ai.py finetune-only
+python coreai.py finetune-only
 
 # Terminal chat
-python linux_ai.py chat
+python coreai.py chat
 ```
 
 ---
@@ -153,4 +153,6 @@ CoreAI checks for updates automatically every 5 minutes. When a new version is a
 
 ## License
 
-MIT — do whatever you want with it.
+[CoreAI Community License](LICENSE) — free for personal use.
+Commercial use, redistribution, and use for training other AI models require written permission.
+See [LICENSE](LICENSE) for full terms.

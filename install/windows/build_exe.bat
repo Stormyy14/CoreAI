@@ -20,7 +20,7 @@ echo [INFO] Building CoreAI.exe (one-folder mode)...
 pyinstaller --noconfirm ^
   --name CoreAI ^
   --add-data "web;web" ^
-  --add-data "linux_ai.py;." ^
+  --add-data "coreai.py;." ^
   --hidden-import uvicorn.logging ^
   --hidden-import uvicorn.loops ^
   --hidden-import uvicorn.loops.auto ^

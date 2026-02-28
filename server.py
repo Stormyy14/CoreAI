@@ -52,7 +52,7 @@ except ImportError:
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
-from linux_ai import LLMBackend, OllamaBackend, Config  # type: ignore
+from coreai import LLMBackend, OllamaBackend, Config  # type: ignore
 
 # ══════════════════════════════════════════════════════════════════════════════
 # App setup

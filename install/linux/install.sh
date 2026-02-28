@@ -27,7 +27,7 @@ die()   { echo -e "${RED}[FAIL]${NC}  $*"; exit 1; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$(realpath "$SCRIPT_DIR/../..")"   # linux_ai root
 
-[[ -f "$SRC_DIR/linux_ai.py" ]] || die "linux_ai.py not found in $SRC_DIR"
+[[ -f "$SRC_DIR/coreai.py" ]] || die "coreai.py not found in $SRC_DIR"
 [[ -f "$SRC_DIR/server.py"   ]] || die "server.py not found in $SRC_DIR"
 
 echo ""
@@ -87,9 +87,9 @@ cat > "$BIN_DIR/coreai" <<EOF
 cd "$INSTALL_DIR"
 source "$VENV_DIR/bin/activate"
 if [[ "\$1" == "train" ]]; then
-    python linux_ai.py train-llm
+    python coreai.py train-llm
 elif [[ "\$1" == "chat" ]]; then
-    python linux_ai.py chat
+    python coreai.py chat
 else
     echo "Starting CoreAI web server at http://localhost:8080"
     python server.py
