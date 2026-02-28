@@ -6,7 +6,7 @@
 #                OR: fpm  (gem install fpm / pip install fpm)
 #
 # Usage:  bash make_deb.sh
-# Output: coreai_1.0.0_amd64.deb  (in the linux_ai root)
+# Output: coreai_1.0.0_amd64.deb  (in the CoreAI root)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
