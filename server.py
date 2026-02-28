@@ -36,7 +36,7 @@ from typing import AsyncGenerator
 
 import psutil
 
-GITHUB_RAW = "https://raw.githubusercontent.com/Stormyy14/coreai/main/version.json"
+GITHUB_RAW = "https://raw.githubusercontent.com/Stormyy14/CoreAI/main/version.json"
 
 # ── FastAPI / Starlette ────────────────────────────────────────────────────────
 try:
